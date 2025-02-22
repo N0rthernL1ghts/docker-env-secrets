@@ -55,7 +55,7 @@ jobs:
         with:
           file: Dockerfile
           platforms: linux/amd64,linux/arm64
-          cache-from: type=registry,ref=ghcr.io/n0rthernl1ghts/docker-env-secrets-cache
+          cache-from: ghcr.io/n0rthernl1ghts/docker-env-secrets
           cache-to: type=inline
           push: true
           pull: true
