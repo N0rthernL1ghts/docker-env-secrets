@@ -28,6 +28,24 @@ assert_secret_exists_and_matches_normalized() {
     return 0
 }
 
+assert_environment_variable_exists_and_matches_value() {
+    local var_name=${1:?}
+    local expected_value="${2:?}"
+    local additional_message="${3:-}"
+
+    if [ "${!var_name}" != "${expected_value}" ]; then
+        err "$(printf "Failed asserting that environment variable '%s' matches the expected value '%s'" "${var_name}" "${expected_value}")"
+
+        if [ -n "${additional_message}" ]; then
+            err "${additional_message}"
+        fi
+
+        return 1
+    fi
+
+    return 0
+}
+
 test_primary_functionality() {
     # Create temporary directory names
 
@@ -51,6 +69,16 @@ test_primary_functionality() {
     assert_secret_exists_and_matches_normalized "TEST_SECRET4" "test_secret value_4" || return 1
 }
 
+test_load_env() {
+    source src/load-env.sh "${NORMALIZED_SECRETS_PATH}"
+
+    assert_environment_variable_exists_and_matches_value TEST_SECRET0 "test_secret value_0" || return 1
+    assert_environment_variable_exists_and_matches_value TEST_SECRET1 "test_secret value_1" || return 1
+    assert_environment_variable_exists_and_matches_value TEST_SECRET2 "test_secret value_2" || return 1
+    assert_environment_variable_exists_and_matches_value TEST_SECRET3 "test_secret value_3" || return 1
+    assert_environment_variable_exists_and_matches_value TEST_SECRET4 "test_secret value_4" || return 1
+}
+
 main() {
 
     # Create temporary directory names
@@ -65,10 +93,17 @@ main() {
     local failed_tests=0
 
     if ! test_primary_functionality; then
-        err "Test test_primary_functionality FAIL"
+        echo "- Test FAIL: test_primary_functionality"
         ((failed_tests++))
     else
-        echo "Test test_primary_functionality OK"
+        echo "- Test OK: test_primary_functionality"
+    fi
+
+    if ! test_load_env; then
+        echo "- Test FAIL: test_load_env"
+        ((failed_tests++))
+    else
+        echo "- Test OK: test_load_env"
     fi
 
     if [ "${failed_tests}" -gt 0 ]; then
@@ -77,7 +112,7 @@ main() {
         return 1
     fi
 
-    printf "\n All tests passed"
+    printf "\nAll tests passed\n"
 }
 
 main
