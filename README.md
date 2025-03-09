@@ -51,13 +51,54 @@ Alternatively, you can use `s6-envdir` or similar tool.
 s6-envdir /run/secrets_normalized your-service --your-flags
 ```
 
+#### Important
+For this to work, you need to make all your core services dependent of init-docker-secrets service.
+
+
 ### To utilize secrets with other init systems
-If you want to use it with other init systems, check [init-docker-secrets-run.sh](src/init-docker-secrets-run.sh) and s, check [load-env.sh](src/load-env.sh) scripts.
+If you want to use it with other init systems, use this version of docker file:
+```Dockerfile
+# ---------------------
+# Build root filesystem
+# Note that we use busybox as base image and use /rootfs as rootfs build directory
+# Busybox is used only for building rootfs, and is not used in the final image
+# ---------------------
+FROM busybox AS rootfs
+
+# Copy over base files
+COPY ["./rootfs", "/rootfs/"]
+
+# Install init-docker-secrets service
+COPY --from=ghcr.io/n0rthernl1ghts/docker-env-secrets:latest ["/", "/rootfs/"]
+
+# Remove S6 Overlay specific files
+RUN set -eux \
+    && rm -rfv "/rootfs/etc/s6-overlay/"
+
+# Or this to remove only init-docker-secrets files
+# RUN set -eux \
+#    && rm -rfv "/rootfs/etc/s6-overlay/s6-rc.d/init-docker-secrets"
+#    && rm -rfv "/rootfs/etc/s6-overlay/s6-rc.d/user/contents.d/init-docker-secrets"
+    
+
+# ---------------------
+# Build image
+# ---------------------
+FROM alpine:latest
+
+COPY --from=rootfs ["/rootfs/", "/"]
+
+ENV NORMALIZED_SECRETS_PATH=/run/secrets_normalized
+...
+...
+```
+
+Also, check [init-docker-secrets-run.sh](src/init-docker-secrets-run.sh) and [load-env.sh](src/load-env.sh) scripts to understand how things are working.
 It should be as easy to adapt it by setting `NORMALIZED_SECRETS_PATH` environment variable to the directory where normalized secrets are to be stored.
 
 example:
 ```bash
-export NORMALIZED_SECRETS_PATH=/run/secrets_normalized 
+# If not set in Dockerfile use: export NORMALIZED_SECRETS_PATH=/run/secrets_normalized 
 /usr/local/bin/init-docker-secrets
 ```
 
@@ -67,9 +108,6 @@ To do this, you can use bundled 'load-env' script.
 source /usr/local/lib/load-env /run/secrets_normalized
 your-service --your-flags
 ```
-
-### Important
-For this to work, you need to make all your core services dependent of init-docker-secrets service.
 
 ### License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
