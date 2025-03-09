@@ -25,13 +25,15 @@ main() {
     mkdir -p "${normalizedSecretsPath}"
 
     # Check if the secrets directory is empty or does not exist
-    if [ ! -d "${secretsPath}" ] || [ -z "$(find "${secretsPath}" -maxdepth 1 -type f)" ]; then
-        warn "No secrets found in ${secretsPath}. Exiting."
+    if [ ! -d "${secretsPath}" ]; then
+        warn "Directory ${secretsPath} does not exist. Exiting."
         return 0
     fi
 
+    local totalSecrets=0
+
     # Use find to iterate over all secrets in the secrets directory
-    find "${secretsPath}" -maxdepth 1 -type f -print0 | while IFS= read -r -d '' secretFile; do
+    while IFS= read -r -d '' secretFile; do
         local secretName
         local normalizedSecretName
         secretName=$(basename "${secretFile}")
@@ -52,12 +54,20 @@ main() {
         # Copy the secret file and check for success
         if cp "${secretFile}" "${normalizedSecretFile}"; then
             info "Copied secret ${secretName} to ${normalizedSecretFile}"
+            ((totalSecrets++))
             continue
         fi
 
         err "Error: Failed to copy secret ${secretName} to ${normalizedSecretFile}"
 
-    done
+    done < <(find "${secretsPath}" -maxdepth 1 -type f -print0)
+
+    if [ "${totalSecrets}" -eq 0 ]; then
+        warn "No secrets found in ${secretsPath}."
+        return 0
+    fi
+
+    info "Successfully copied ${totalSecrets} secrets to ${normalizedSecretsPath}"
 }
 
 main
