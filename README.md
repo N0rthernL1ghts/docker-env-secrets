@@ -2,7 +2,7 @@
 Make secrets available as uppercase environment variables for seamless integration in Docker containers. Optimized for S6 supervised environment.
 
 This is designed and optimized for use with [S6 Overlay](https://github.com/just-containers/s6-overlay) (See: https://github.com/N0rthernL1ghts/s6-rootfs).
-To use with other init systems, check the section below.
+To use with other init systems, check the [To utilize secrets with other init systems](#to-utilize-secrets-with-other-init-systems) section.
 
 ### Usage
 ```Dockerfile
