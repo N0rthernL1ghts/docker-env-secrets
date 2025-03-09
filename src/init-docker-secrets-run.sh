@@ -31,7 +31,7 @@ main() {
     fi
 
     # Use find to iterate over all secrets in the secrets directory
-    find "${secretsPath}" -maxdepth 1 -type f | while read -r secretFile; do
+    find "${secretsPath}" -maxdepth 1 -type f -print0 | while IFS= read -r -d '' secretFile; do
         local secretName
         local normalizedSecretName
         secretName=$(basename "${secretFile}")
