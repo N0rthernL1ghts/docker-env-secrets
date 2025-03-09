@@ -27,6 +27,9 @@ jobs:
         name: checkout code
         uses: actions/checkout@v4
 
+      - name: Run tests
+        run: tests/init-docker-secrets-run-test.sh
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
