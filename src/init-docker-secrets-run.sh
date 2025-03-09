@@ -18,7 +18,7 @@ main() {
     # This will prepend service name to all output from here
     exec > >(while read -r line; do echo "[init-docker-secrets] ${line}"; done) 2>&1
 
-    local secretsPath="/run/secrets"
+    local secretsPath="${SECRETS_PATH:-/run/secrets/}"
     local normalizedSecretsPath="${NORMALIZED_SECRETS_PATH:-/var/run/s6/container_environment/}"
     declare -A uniqueSecrets # Associative array to track normalized secret names
 
