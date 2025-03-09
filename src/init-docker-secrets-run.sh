@@ -39,8 +39,11 @@ main() {
         secretName=$(basename "${secretFile}")
         normalizedSecretName="${secretName^^}"
 
+        local normalizedSecretFile="${normalizedSecretsPath}/${normalizedSecretName}"
+        declare -A uniqueSecrets
+
         # Check for duplicate normalized secret names
-        if [[ -n ${uniqueSecrets[${normalizedSecretName}]} ]]; then
+        if [[ -f "${normalizedSecretFile}" ]] || [[ -n ${uniqueSecrets[${normalizedSecretName}]} ]]; then
             warn "$(printf "The secret '%s' cannot be processed because it would overwrite the normalized name '%s'. This is not supported. Skipping this secret.\n" \
                 "${secretName}" "${normalizedSecretName}")"
             continue
@@ -48,8 +51,6 @@ main() {
 
         # Store the normalized secret name
         uniqueSecrets[${normalizedSecretName}]=1
-
-        local normalizedSecretFile="${normalizedSecretsPath}/${normalizedSecretName}"
 
         # Copy the secret file and check for success
         if cp "${secretFile}" "${normalizedSecretFile}"; then
