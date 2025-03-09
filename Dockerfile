@@ -2,6 +2,7 @@ FROM scratch AS rootfs
 
 COPY ["./rootfs/", "/"]
 COPY --chmod=0777 ["./src/init-docker-secrets-run.sh", "/etc/s6-overlay/s6-rc.d/init-docker-secrets/run"]
+COPY --chmod=0777 ["./src/init-docker-secrets-run.sh", "/usr/local/bin/init-docker-secrets"]
 COPY --chmod=0777 ["./src/load-env.sh", "/usr/local/lib/load-env"]
 
 
