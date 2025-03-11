@@ -51,6 +51,9 @@ Alternatively, you can use `s6-envdir` or similar tool.
 s6-envdir /run/secrets_normalized your-service --your-flags
 ```
 
+**Note:** Due to behaviour of `with-contenv`, environment variable `S6_KEEP_ENV` must be set to `0`.  
+Otherwise, secrets will not be loaded in the environment. If this is not desirable, see [To utilize secrets with other init systems](#to-utilize-secrets-with-other-init-systems) section for alternative loading methods. In short, using `source /usr/local/lib/load-env /run/s6/container_environment` should be sufficient.
+
 #### Important
 For this to work, you need to make all your core services dependent of init-docker-secrets service.
 
