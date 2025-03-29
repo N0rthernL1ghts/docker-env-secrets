@@ -1,8 +1,16 @@
 # docker-env-secrets
-Make secrets available as uppercase environment variables for seamless integration in Docker containers. Optimized for S6 supervised environment.
+Make secrets available as environment variables for seamless integration in Docker containers. Optimized for S6 supervised environment.
 
 This is designed and optimized for use with [S6 Overlay](https://github.com/just-containers/s6-overlay) (See: https://github.com/N0rthernL1ghts/s6-rootfs).
 To use with other init systems, check the [To utilize secrets with other init systems](#to-utilize-secrets-with-other-init-systems) section.
+
+### Behavior
+By default, secret names are normalized to uppercase to comply with environment variable naming conventions.
+You can disable this behavior by setting environment variable `NORMALIZE_SECRET_NAMES` to `0`.
+
+Secrets are stored in `/var/run/s6/container_environment` directory, where each secret is stored in a separate file. This can be adjusted with `SECRETS_EXPORT_PATH` environment variable.
+`/var/run/s6/container_environment` is a default location and applies only to S6 Overlay. For other init systems, you can adjust this path to your needs.
+
 
 ### Usage
 ```Dockerfile
@@ -91,17 +99,18 @@ FROM alpine:latest
 
 COPY --from=rootfs ["/rootfs/", "/"]
 
-ENV NORMALIZED_SECRETS_PATH=/run/secrets_normalized
+ENV SECRETS_EXPORT_PATH=/run/secrets_normalized
+ENV NORMALIZE_SECRET_NAMES=1
 ...
 ...
 ```
 
 Also, check [init-docker-secrets-run.sh](src/init-docker-secrets-run.sh) and [load-env.sh](src/load-env.sh) scripts to understand how things are working.
-It should be as easy to adapt it by setting `NORMALIZED_SECRETS_PATH` environment variable to the directory where normalized secrets are to be stored.
+It should be as easy to adapt it by setting `SECRETS_EXPORT_PATH` environment variable to the directory where normalized secrets are to be stored.
 
 example:
 ```bash
-# If not set in Dockerfile use: export NORMALIZED_SECRETS_PATH=/run/secrets_normalized 
+# If not set in Dockerfile use: export SECRETS_EXPORT_PATH=/run/secrets_normalized 
 /usr/local/bin/init-docker-secrets
 ```
 

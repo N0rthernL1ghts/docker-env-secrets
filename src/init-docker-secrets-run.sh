@@ -20,6 +20,7 @@ main() {
 
     local secrets_path="${SECRETS_PATH:-/run/secrets/}"
     local secrets_export_path="${SECRETS_EXPORT_PATH:-/var/run/s6/container_environment/}"
+    local normalize_secret_names="${NORMALIZE_SECRET_NAMES:-1}"
     declare -A unique_secrets # Associative array to track secret names
 
     mkdir -p "${secrets_export_path}"
@@ -30,6 +31,12 @@ main() {
         return 0
     fi
 
+    if [ "${normalize_secret_names}" -eq 1 ]; then
+        info "Normalizing secret names is enabled. Secrets will be exported in uppercase."
+    else
+        info "Normalizing secret names is disabled. Secrets will be exported as is."
+    fi
+
     local total_secrets=0
 
     # Use find to iterate over all secrets in the secrets directory
@@ -38,7 +45,12 @@ main() {
         local secret_name
         local export_secret_name
         secret_name=$(basename "${secret_file}")
-        export_secret_name="${secret_name^^}"
+        export_secret_name="${secret_name}"
+
+        # Normalize secret names to uppercase if requested
+        if [ "${normalize_secret_names}" -eq 1 ]; then
+            export_secret_name="${secret_name^^}"
+        fi
 
         local export_secret_file="${secrets_export_path}/${export_secret_name}"
         declare -A unique_secrets
