@@ -4,7 +4,7 @@
 shopt -s nullglob
 
 main() {
-    local normalized_secrets_path="${1:?Path to normalized secrets directory is required}"
+    local import_secrets_path="${1:?Path to import secrets directory is required}"
     local secret
     local var_name
 
@@ -13,6 +13,6 @@ main() {
         var_name=$(basename "${secret}")
         # Read file content efficiently while preserving whitespace/newlines and export the variable
         export "${var_name}=$(<"${secret}")"
-    done < <(find "${normalized_secrets_path}" -type f -print0)
+    done < <(find "${import_secrets_path}" -type f -print0)
 }
 main "${@}"

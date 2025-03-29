@@ -36,31 +36,31 @@ main() {
     local secret_file
     while IFS= read -r -d '' secret_file; do
         local secret_name
-        local normalized_secret_name
+        local export_secret_name
         secret_name=$(basename "${secret_file}")
-        normalized_secret_name="${secret_name^^}"
+        export_secret_name="${secret_name^^}"
 
-        local normalized_secret_file="${secrets_export_path}/${normalized_secret_name}"
+        local export_secret_file="${secrets_export_path}/${export_secret_name}"
         declare -A unique_secrets
 
-        # Check for duplicate normalized secret names
-        if [[ -f "${normalized_secret_file}" ]] || [[ -n ${unique_secrets[${normalized_secret_name}]} ]]; then
-            warn "$(printf "The secret '%s' cannot be processed because it would overwrite the normalized name '%s'. This is not supported. Skipping this secret.\n" \
-                "${secret_name}" "${normalized_secret_name}")"
+        # Check for duplicate export secret names
+        if [[ -f "${export_secret_file}" ]] || [[ -n ${unique_secrets[${export_secret_name}]} ]]; then
+            warn "$(printf "The secret '%s' cannot be processed because it would overwrite the export name '%s'. This is not supported. Skipping this secret.\n" \
+                "${secret_name}" "${export_secret_name}")"
             continue
         fi
 
-        # Store the normalized secret name
-        unique_secrets[${normalized_secret_name}]=1
+        # Store the exported secret name
+        unique_secrets[${export_secret_name}]=1
 
         # Copy the secret file and check for success
-        if cp "${secret_file}" "${normalized_secret_file}"; then
-            info "Copied secret ${secret_name} to ${normalized_secret_file}"
+        if cp "${secret_file}" "${export_secret_file}"; then
+            info "Copied secret ${secret_name} to ${export_secret_file}"
             ((total_secrets++))
             continue
         fi
 
-        err "Error: Failed to copy secret ${secret_name} to ${normalized_secret_file}"
+        err "Error: Failed to copy secret ${secret_name} to ${export_secret_file}"
 
     done < <(find "${secrets_path}" -maxdepth 1 -type f -print0)
 
