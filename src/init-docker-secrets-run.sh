@@ -18,57 +18,58 @@ main() {
     # This will prepend service name to all output from here
     exec > >(while read -r line; do echo "[init-docker-secrets] ${line}"; done) 2>&1
 
-    local secretsPath="${SECRETS_PATH:-/run/secrets/}"
-    local normalizedSecretsPath="${NORMALIZED_SECRETS_PATH:-/var/run/s6/container_environment/}"
-    declare -A uniqueSecrets # Associative array to track normalized secret names
+    local secrets_path="${SECRETS_PATH:-/run/secrets/}"
+    local secrets_export_path="${SECRETS_EXPORT_PATH:-/var/run/s6/container_environment/}"
+    declare -A unique_secrets # Associative array to track secret names
 
-    mkdir -p "${normalizedSecretsPath}"
+    mkdir -p "${secrets_export_path}"
 
     # Check if the secrets directory is empty or does not exist
-    if [ ! -d "${secretsPath}" ]; then
-        warn "Directory ${secretsPath} does not exist. Exiting."
+    if [ ! -d "${secrets_path}" ]; then
+        warn "Directory ${secrets_path} does not exist. Exiting."
         return 0
     fi
 
-    local totalSecrets=0
+    local total_secrets=0
 
     # Use find to iterate over all secrets in the secrets directory
-    while IFS= read -r -d '' secretFile; do
-        local secretName
-        local normalizedSecretName
-        secretName=$(basename "${secretFile}")
-        normalizedSecretName="${secretName^^}"
+    local secret_file
+    while IFS= read -r -d '' secret_file; do
+        local secret_name
+        local normalized_secret_name
+        secret_name=$(basename "${secret_file}")
+        normalized_secret_name="${secret_name^^}"
 
-        local normalizedSecretFile="${normalizedSecretsPath}/${normalizedSecretName}"
-        declare -A uniqueSecrets
+        local normalized_secret_file="${secrets_export_path}/${normalized_secret_name}"
+        declare -A unique_secrets
 
         # Check for duplicate normalized secret names
-        if [[ -f "${normalizedSecretFile}" ]] || [[ -n ${uniqueSecrets[${normalizedSecretName}]} ]]; then
+        if [[ -f "${normalized_secret_file}" ]] || [[ -n ${unique_secrets[${normalized_secret_name}]} ]]; then
             warn "$(printf "The secret '%s' cannot be processed because it would overwrite the normalized name '%s'. This is not supported. Skipping this secret.\n" \
-                "${secretName}" "${normalizedSecretName}")"
+                "${secret_name}" "${normalized_secret_name}")"
             continue
         fi
 
         # Store the normalized secret name
-        uniqueSecrets[${normalizedSecretName}]=1
+        unique_secrets[${normalized_secret_name}]=1
 
         # Copy the secret file and check for success
-        if cp "${secretFile}" "${normalizedSecretFile}"; then
-            info "Copied secret ${secretName} to ${normalizedSecretFile}"
-            ((totalSecrets++))
+        if cp "${secret_file}" "${normalized_secret_file}"; then
+            info "Copied secret ${secret_name} to ${normalized_secret_file}"
+            ((total_secrets++))
             continue
         fi
 
-        err "Error: Failed to copy secret ${secretName} to ${normalizedSecretFile}"
+        err "Error: Failed to copy secret ${secret_name} to ${normalized_secret_file}"
 
-    done < <(find "${secretsPath}" -maxdepth 1 -type f -print0)
+    done < <(find "${secrets_path}" -maxdepth 1 -type f -print0)
 
-    if [ "${totalSecrets}" -eq 0 ]; then
-        warn "No secrets found in ${secretsPath}."
+    if [ "${total_secrets}" -eq 0 ]; then
+        warn "No secrets found in ${secrets_path}."
         return 0
     fi
 
-    info "Successfully copied ${totalSecrets} secrets to ${normalizedSecretsPath}"
+    info "Successfully copied ${total_secrets} secrets to ${secrets_export_path}"
 }
 
 main
