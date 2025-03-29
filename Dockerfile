@@ -7,7 +7,8 @@ COPY --chmod=0777 ["./src/load-env.sh", "/rootfs/usr/local/lib/load-env"]
 
 # Replace interpreter with s6-overlay's /command/with-contenv
 # For the sake of compatibility with non-s6-overlay based systems, /command/with-contenv is not default
-RUN sed -i 's|#!/usr/bin/env bash|#!/command/with-contenv bash|' /rootfs/usr/local/bin/init-docker-secrets
+RUN set -eux \
+    && sed -i 's|#!/usr/bin/env bash|#!/command/with-contenv bash|' /rootfs/usr/local/bin/init-docker-secrets
 
 
 
