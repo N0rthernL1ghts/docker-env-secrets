@@ -1,6 +1,5 @@
 version: 2
 updates:
-
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
@@ -9,9 +8,23 @@ updates:
     assignees:
       - "xZero707"
 
-   # Maintain Docker image dependencies
+    # Maintain Docker image dependencies
   - package-ecosystem: "docker"
     directory: "/"
+    schedule:
+      interval: "weekly"
+    assignees:
+      - "xZero707"
+
+  - package-ecosystem: "docker"
+    directory: "/tests/integration/generic/"
+    schedule:
+      interval: "weekly"
+    assignees:
+      - "xZero707"
+
+  - package-ecosystem: "docker"
+    directory: "/tests/integration/s6-overlay/"
     schedule:
       interval: "weekly"
     assignees:

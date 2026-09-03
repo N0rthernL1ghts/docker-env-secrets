@@ -1,0 +1,9 @@
+secrets:
+  generic_secret:
+    file: ./secrets/generic_secret
+
+services:
+  test:
+    image: docker-env-secrets-generic:integration-test
+    secrets:
+      - generic_secret

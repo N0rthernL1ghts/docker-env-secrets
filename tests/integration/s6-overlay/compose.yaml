@@ -1,0 +1,11 @@
+secrets:
+  s6_test_secret:
+    file: ./secrets/s6_test_secret
+
+services:
+  test:
+    image: docker-env-secrets-s6:integration-test
+    environment:
+      S6_KEEP_ENV: 0
+    secrets:
+      - s6_test_secret
