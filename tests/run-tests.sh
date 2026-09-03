@@ -1,27 +1,27 @@
 #!/usr/bin/env bash
 
 err() {
-    printf "%s\n" "$*" >&2
+    printf '%s\n' "$*" >&2
 }
 
 assert_secret_exists_and_matches() {
-    local secret=${1:?}
+    local secret="${1:?}"
     local expected_value="${2:?}"
     local additional_message="${3:-}"
     local exported_secret_file="${SECRETS_EXPORT_PATH}/${secret}"
 
-    if [ ! -f "${exported_secret_file}" ]; then
-        err "Failed asserting that secret ${secret} exists"
+    if [[ ! -f "${exported_secret_file}" ]]; then
+        err "Failed asserting that secret ${secret} exists at ${exported_secret_file}"
         return 1
     fi
 
     local actual_value
-    actual_value=$(cat "${exported_secret_file}")
-    if [ "${actual_value}" != "${expected_value}" ]; then
+    actual_value=$(<"${exported_secret_file}")
+    if [[ "${actual_value}" != "${expected_value}" ]]; then
         err "Failed asserting that secret ${secret} matches the expected value."
         err "$(printf "Expected != Actual: '%s' != '%s'" "${expected_value}" "${actual_value}")"
 
-        if [ -n "${additional_message}" ]; then
+        if [[ -n "${additional_message}" ]]; then
             err "${additional_message}"
         fi
 
@@ -31,15 +31,27 @@ assert_secret_exists_and_matches() {
     return 0
 }
 
+assert_secret_not_exists() {
+    local secret="${1:?}"
+    local exported_secret_file="${SECRETS_EXPORT_PATH}/${secret}"
+
+    if [[ -e "${exported_secret_file}" ]]; then
+        err "Failed asserting that secret ${secret} does not exist at ${exported_secret_file}"
+        return 1
+    fi
+
+    return 0
+}
+
 assert_environment_variable_exists_and_matches_value() {
-    local var_name=${1:?}
+    local var_name="${1:?}"
     local expected_value="${2:?}"
     local additional_message="${3:-}"
 
-    if [ "${!var_name}" != "${expected_value}" ]; then
+    if [[ "${!var_name}" != "${expected_value}" ]]; then
         err "$(printf "Failed asserting that environment variable '%s' matches the expected value '%s'" "${var_name}" "${expected_value}")"
 
-        if [ -n "${additional_message}" ]; then
+        if [[ -n "${additional_message}" ]]; then
             err "${additional_message}"
         fi
 
@@ -50,19 +62,14 @@ assert_environment_variable_exists_and_matches_value() {
 }
 
 test_primary_functionality_normalized_secrets() {
-    # Create temporary directory names
-
-    # Create secret file in the normalized secrets directory
     echo "test_secret value_0" >"${SECRETS_EXPORT_PATH}/TEST_SECRET0"
 
-    # Create a secret files
     echo "should not be exported" >"${SECRETS_PATH}/test_secret0"
     echo "test_secret value_1" >"${SECRETS_PATH}/test_secret1"
     echo "test_secret value_2" >"${SECRETS_PATH}/test_secret2"
     echo "test_secret value_3" >"${SECRETS_PATH}/test_secret3"
-    echo "test_secret value_4" >"${SECRETS_PATH}/TEST_SECRET4" # Should be able to handle this too
+    echo "test_secret value_4" >"${SECRETS_PATH}/TEST_SECRET4"
 
-    # Run the script
     ./src/init-docker-secrets-run.sh
 
     assert_secret_exists_and_matches "TEST_SECRET0" "test_secret value_0" "- Secret was probably overwritten" || return 1
@@ -73,18 +80,14 @@ test_primary_functionality_normalized_secrets() {
 }
 
 test_primary_functionality_non_normalized_secrets() {
-    # Create temporary directory names
-
-    # Create a secret files
     echo "test_secret value_0" >"${SECRETS_PATH}/test_secret0"
     echo "test_secret value_1" >"${SECRETS_PATH}/test_secret1"
     echo "test_secret value_2" >"${SECRETS_PATH}/test_secret2"
     echo "test_secret value_3" >"${SECRETS_PATH}/test_secret3"
-    echo "test_secret value_4" >"${SECRETS_PATH}/TEST_SECRET4" # Should be able to handle this too
+    echo "test_secret value_4" >"${SECRETS_PATH}/TEST_SECRET4"
 
     export NORMALIZE_SECRET_NAMES=0
 
-    # Run the script
     ./src/init-docker-secrets-run.sh
 
     assert_secret_exists_and_matches "test_secret0" "test_secret value_0" "- Secret was probably overwritten" || return 1
@@ -104,54 +107,127 @@ test_load_env() {
     assert_environment_variable_exists_and_matches_value TEST_SECRET4 "test_secret value_4" || return 1
 }
 
-main() {
+test_missing_secrets_path() {
+    local non_existent_path="${SECRETS_PATH}/nonexistent_dir"
+    local export_path="${SECRETS_EXPORT_PATH}/export_check"
 
-    # Create temporary directory names
+    SECRETS_PATH="${non_existent_path}" SECRETS_EXPORT_PATH="${export_path}" ./src/init-docker-secrets-run.sh || return 1
 
+    if [[ -d "${export_path}" ]]; then
+        err "Export directory should not have been created when secrets directory does not exist"
+        return 1
+    fi
+}
+
+test_empty_secrets_path() {
+    ./src/init-docker-secrets-run.sh || return 1
+
+    local count
+    count=$(find "${SECRETS_EXPORT_PATH}" -maxdepth 1 -type f | wc -l)
+    if [[ "${count}" -ne 0 ]]; then
+        err "Export directory should be empty when secrets directory is empty"
+        return 1
+    fi
+}
+
+test_symlinks_and_hidden_files() {
+    local target_dir
+    target_dir="$(mktemp -d)"
+    echo "symlink_value" >"${target_dir}/target_file"
+
+    ln -s "${target_dir}/target_file" "${SECRETS_PATH}/linked_secret"
+    echo "hidden_value" >"${SECRETS_PATH}/.hidden_secret"
+
+    ./src/init-docker-secrets-run.sh
+
+    rm -rf "${target_dir}"
+
+    assert_secret_exists_and_matches "LINKED_SECRET" "symlink_value" || return 1
+    assert_secret_not_exists ".HIDDEN_SECRET" || return 1
+    assert_secret_not_exists ".hidden_secret" || return 1
+}
+
+test_duplicate_collision_skipping() {
+    echo "first_value" >"${SECRETS_PATH}/dup_secret"
+    echo "second_value" >"${SECRETS_PATH}/DUP_SECRET"
+
+    ./src/init-docker-secrets-run.sh
+
+    local count
+    count=$(find "${SECRETS_EXPORT_PATH}" -maxdepth 1 -type f -name "DUP_SECRET" | wc -l)
+    if [[ "${count}" -ne 1 ]]; then
+        err "Expected exactly 1 DUP_SECRET export file"
+        return 1
+    fi
+}
+
+test_load_env_missing_directory() {
+    if (source src/load-env.sh "/path/to/missing_directory_12345" 2>/dev/null); then
+        err "Expected load-env.sh to fail on non-existent directory"
+        return 1
+    fi
+}
+
+test_load_env_invalid_identifiers() {
+    echo "valid_val" >"${SECRETS_EXPORT_PATH}/VALID_VAR"
+    echo "invalid_val" >"${SECRETS_EXPORT_PATH}/invalid-var-name"
+    echo "invalid_val2" >"${SECRETS_EXPORT_PATH}/123_invalid_var"
+
+    source src/load-env.sh "${SECRETS_EXPORT_PATH}" 2>/dev/null
+
+    assert_environment_variable_exists_and_matches_value VALID_VAR "valid_val" || return 1
+}
+
+reset_dirs() {
+    rm -rf "${SECRETS_PATH}" "${SECRETS_EXPORT_PATH}"
     SECRETS_PATH="$(mktemp -d)"
     SECRETS_EXPORT_PATH="$(mktemp -d)"
+    unset NORMALIZE_SECRET_NAMES
+    export SECRETS_PATH SECRETS_EXPORT_PATH
+}
 
+main() {
+    SECRETS_PATH="$(mktemp -d)"
+    SECRETS_EXPORT_PATH="$(mktemp -d)"
     export SECRETS_PATH SECRETS_EXPORT_PATH
 
     trap 'rm -rf "${SECRETS_PATH}" "${SECRETS_EXPORT_PATH}"' EXIT
 
     local failed_tests=0
 
-    if ! test_primary_functionality_normalized_secrets; then
-        echo "- Test FAIL: test_primary_functionality_normalized_secrets"
-        ((failed_tests++))
-    else
-        echo "- Test OK: test_primary_functionality_normalized_secrets"
-    fi
+    run_test() {
+        local test_name="${1:?}"
+        local should_reset="${2:-1}"
 
-    if ! test_load_env; then
-        echo "- Test FAIL: test_load_env"
-        ((failed_tests++))
-    else
-        echo "- Test OK: test_load_env"
-    fi
+        if [[ "${should_reset}" -eq 1 ]]; then
+            reset_dirs
+        fi
 
-    # Regenerate temporary directories
-    rm -rf "${SECRETS_PATH}" "${SECRETS_EXPORT_PATH}"
-    SECRETS_PATH="$(mktemp -d)"
-    SECRETS_EXPORT_PATH="$(mktemp -d)"
-    export SECRETS_PATH SECRETS_EXPORT_PATH
-    trap 'rm -rf "${SECRETS_PATH}" "${SECRETS_EXPORT_PATH}"' EXIT
+        if ! "${test_name}"; then
+            printf -- '- Test FAIL: %s\n' "${test_name}"
+            ((failed_tests++))
+        else
+            printf -- '- Test OK: %s\n' "${test_name}"
+        fi
+    }
 
-    if ! test_primary_functionality_non_normalized_secrets; then
-        echo "- Test FAIL: test_primary_functionality_non_normalized_secrets"
-        ((failed_tests++))
-    else
-        echo "- Test OK: test_primary_functionality_non_normalized_secrets"
-    fi
+    run_test test_primary_functionality_normalized_secrets 1
+    run_test test_load_env 0
+    run_test test_primary_functionality_non_normalized_secrets 1
+    run_test test_missing_secrets_path 1
+    run_test test_empty_secrets_path 1
+    run_test test_symlinks_and_hidden_files 1
+    run_test test_duplicate_collision_skipping 1
+    run_test test_load_env_missing_directory 1
+    run_test test_load_env_invalid_identifiers 1
 
-    if [ "${failed_tests}" -gt 0 ]; then
-        printf "\n"
-        err "Some tests failed"
+    if [[ "${failed_tests}" -gt 0 ]]; then
+        printf '\n'
+        err "Some tests failed (${failed_tests} failure(s))"
         return 1
     fi
 
-    printf "\nAll tests passed\n"
+    printf '\nAll tests passed\n'
 }
 
-main
+main "$@"
