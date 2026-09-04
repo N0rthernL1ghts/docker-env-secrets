@@ -29,7 +29,7 @@ The utility is configured via container environment variables:
 | Variable | Default | Description |
 | :--- | :--- | :--- |
 | `SECRETS_PATH` | `/run/secrets/` | Source directory containing secret files or symbolic links. |
-| `SECRETS_EXPORT_PATH` | `/var/run/s6/container_environment/` | Destination directory where processed secrets are written as individual files. |
+| `SECRETS_EXPORT_PATH` | `/var/run/s6/container_environment/` | Destination directory where processed secrets are written as individual files. **Do not override when using S6 Overlay.** |
 | `NORMALIZE_SECRET_NAMES` | `1` | Set to `1` to convert secret names to uppercase (e.g., `db_password` -> `DB_PASSWORD`). Set to `0` to retain original file casing. |
 
 ## Integration & Usage
@@ -37,6 +37,10 @@ The utility is configured via container environment variables:
 ### 1. Integration with S6 Overlay
 
 When using S6 Overlay, copy the root filesystem layers into your container build.
+
+> [!WARNING]
+> **Do not override `SECRETS_EXPORT_PATH` when using S6 Overlay.**
+> S6 Overlay and `with-contenv` strictly rely on `/var/run/s6/container_environment/` to propagate environment variables to supervised services. Overriding this path will break the S6 supervisor configuration and prevent services from inheriting the exported secrets.
 
 #### Dockerfile Example
 
