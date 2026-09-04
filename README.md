@@ -1,5 +1,7 @@
 # docker-env-secrets
 
+[![AI-Assisted](https://img.shields.io/badge/AI--Assisted-Human%20Verified-blue?style=flat-square)](#ai-transparency--disclosure)
+
 A lightweight container initialization utility that reads secrets mounted as files (such as Docker secrets in `/run/secrets/`) and exposes them as container environment variables.
 
 The image is packaged as a minimal `scratch` container containing root filesystem assets with zero external runtime dependencies. It provides first-class support for [S6 Overlay](https://github.com/just-containers/s6-overlay) (see [s6-rootfs](https://github.com/N0rthernL1ghts/s6-rootfs)) via `s6-rc` service definitions, while maintaining full compatibility with generic container runtimes and init systems through a configurable export path and a standalone environment loader.
@@ -163,10 +165,18 @@ The `load-env` helper validates each filename to ensure it conforms to standard 
 
 Automated tests and validation checks are included in the repository.
 
-### Run Automated Tests
+### Run Unit Tests
 
 ```bash
 ./tests/run-tests.sh
+```
+
+### Run Integration Tests
+
+Execute the end-to-end container test suite (requires Docker and Docker Compose):
+
+```bash
+./tests/run-integration-tests.sh
 ```
 
 ### Linting & Formatting
@@ -184,6 +194,19 @@ shfmt -i 4 -d src/*.sh tests/*.sh
 ```bash
 docker build -t docker-env-secrets:local .
 ```
+
+## AI Transparency & Disclosure
+
+This project embraces AI-assisted development tools to enhance development velocity, expand test coverage, and refine documentation:
+
+- **Scope of Use**: AI tooling is utilized for regression test generation, edge-case exploration, and documentation formatting.
+- **Human Verification**: Every line of code, shell script, and container configuration is manually reviewed, verified, and audited by human maintainers. CODING is an art!
+- **Multi-Tier Quality Gates**:
+  - **Static Analysis & Linting**: Strict adherence to POSIX/Bash guidelines validated via `shellcheck` and `shfmt`.
+  - **Functional & Unit Tests**: Automated test suite ([`./tests/run-tests.sh`](tests/run-tests.sh)) validating path handling, secret parsing, collision guards, and shell exports.
+  - **Container Integration Tests**: Full end-to-end integration test suite ([`./tests/run-integration-tests.sh`](tests/run-integration-tests.sh)) asserting real-world container behavior across S6 Overlay, generic init environments, and edge cases via Docker Compose.
+- **Accountability**: The human maintainers retain complete ownership, maintenance commitment, and security accountability for all committed logic.
+- **Agent Guidelines**: For agents and automated tools contributing to this repository, operational directives and strict coding standards are codified in [AGENTS.md](AGENTS.md).
 
 ## License
 
