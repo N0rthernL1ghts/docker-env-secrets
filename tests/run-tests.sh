@@ -178,7 +178,48 @@ test_load_env_invalid_identifiers() {
     assert_environment_variable_exists_and_matches_value VALID_VAR "valid_val" || return 1
 }
 
+test_s6_export_path_mismatch_warning() {
+    S6_RUNTIME_DIR="$(mktemp -d)"
+    export S6_RUNTIME_DIR
+
+    local output
+    output=$(./src/init-docker-secrets-run.sh 2>&1)
+
+    if [[ "${output}" != *"S6 Overlay detected, but SECRETS_EXPORT_PATH differs from default!"* ]]; then
+        err "Expected S6 export path mismatch warning in output"
+        err "Output was: ${output}"
+        return 1
+    fi
+}
+
+test_s6_export_path_default_no_warning() {
+    S6_RUNTIME_DIR="$(mktemp -d)"
+    export S6_RUNTIME_DIR
+
+    local output
+    output=$(SECRETS_PATH="/nonexistent_$$" SECRETS_EXPORT_PATH="/var/run/s6/container_environment/" ./src/init-docker-secrets-run.sh 2>&1)
+
+    if [[ "${output}" == *"S6 Overlay detected, but SECRETS_EXPORT_PATH differs from default!"* ]]; then
+        err "Did not expect S6 export path mismatch warning when using /var/run/s6/container_environment/"
+        err "Output was: ${output}"
+        return 1
+    fi
+
+    output=$(SECRETS_PATH="/nonexistent_$$" SECRETS_EXPORT_PATH="/run/s6/container_environment" ./src/init-docker-secrets-run.sh 2>&1)
+
+    if [[ "${output}" == *"S6 Overlay detected, but SECRETS_EXPORT_PATH differs from default!"* ]]; then
+        err "Did not expect S6 export path mismatch warning when using /run/s6/container_environment"
+        err "Output was: ${output}"
+        return 1
+    fi
+}
+
 reset_dirs() {
+    if [[ -n "${S6_RUNTIME_DIR:-}" ]] && [[ -d "${S6_RUNTIME_DIR}" ]]; then
+        rm -rf "${S6_RUNTIME_DIR}"
+    fi
+    unset S6_RUNTIME_DIR
+
     rm -rf "${SECRETS_PATH}" "${SECRETS_EXPORT_PATH}"
     SECRETS_PATH="$(mktemp -d)"
     SECRETS_EXPORT_PATH="$(mktemp -d)"
@@ -191,7 +232,7 @@ main() {
     SECRETS_EXPORT_PATH="$(mktemp -d)"
     export SECRETS_PATH SECRETS_EXPORT_PATH
 
-    trap 'rm -rf "${SECRETS_PATH}" "${SECRETS_EXPORT_PATH}"' EXIT
+    trap 'rm -rf "${SECRETS_PATH}" "${SECRETS_EXPORT_PATH}" ${S6_RUNTIME_DIR:+"${S6_RUNTIME_DIR}"}' EXIT
 
     local failed_tests=0
 
@@ -220,6 +261,8 @@ main() {
     run_test test_duplicate_collision_skipping 1
     run_test test_load_env_missing_directory 1
     run_test test_load_env_invalid_identifiers 1
+    run_test test_s6_export_path_mismatch_warning 1
+    run_test test_s6_export_path_default_no_warning 1
 
     if [[ "${failed_tests}" -gt 0 ]]; then
         printf '\n'

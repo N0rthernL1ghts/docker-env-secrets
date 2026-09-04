@@ -20,6 +20,20 @@ main() {
     local normalize_secret_names="${NORMALIZE_SECRET_NAMES:-1}"
     local -A unique_secrets
 
+    local s6_runtime_dir="${S6_RUNTIME_DIR:-/run/s6}"
+    if [[ -d "${s6_runtime_dir}" ]] || [[ -d "/var/run/s6" ]]; then
+        local normalized_export_path="${secrets_export_path%/}"
+        if [[ "${normalized_export_path}" != "/var/run/s6/container_environment" && "${normalized_export_path}" != "/run/s6/container_environment" ]]; then
+            warn "======================================================================="
+            warn "S6 Overlay detected, but SECRETS_EXPORT_PATH differs from default!"
+            warn "$(printf "Current SECRETS_EXPORT_PATH : '%s'" "${secrets_export_path}")"
+            warn "Expected S6 export target  : '/var/run/s6/container_environment/'"
+            warn "S6 Overlay strictly requires secrets in container_environment."
+            warn "Supervised services running under with-contenv will NOT inherit them!"
+            warn "======================================================================="
+        fi
+    fi
+
     if [[ ! -d "${secrets_path}" ]]; then
         warn "Directory ${secrets_path} does not exist. Exiting."
         return 0
