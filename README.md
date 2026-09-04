@@ -1,5 +1,6 @@
 # docker-env-secrets
 
+[![Build Status](https://img.shields.io/github/actions/workflow/status/N0rthernL1ghts/docker-env-secrets/image.yml?style=flat-square)](https://github.com/N0rthernL1ghts/docker-env-secrets/actions/workflows/image.yml)
 [![AI-Assisted](https://img.shields.io/badge/AI--Assisted-Human%20Verified-blue?style=flat-square)](#ai-transparency--disclosure)
 
 A lightweight container initialization utility that reads secrets mounted as files (such as Docker secrets in `/run/secrets/`) and exposes them as container environment variables.
