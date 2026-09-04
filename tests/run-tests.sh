@@ -214,11 +214,56 @@ test_s6_export_path_default_no_warning() {
     fi
 }
 
+test_s6_keep_env_warning() {
+    S6_RUNTIME_DIR="$(mktemp -d)"
+    export S6_RUNTIME_DIR
+
+    local output
+    output=$(S6_KEEP_ENV=1 ./src/init-docker-secrets-run.sh 2>&1)
+
+    if [[ "${output}" != *"S6_KEEP_ENV is set to 1"* ]]; then
+        err "Expected S6_KEEP_ENV warning in output when S6_KEEP_ENV=1"
+        err "Output was: ${output}"
+        return 1
+    fi
+
+    output=$(S6_KEEP_ENV=true ./src/init-docker-secrets-run.sh 2>&1)
+
+    if [[ "${output}" != *"S6_KEEP_ENV is set to 1"* ]]; then
+        err "Expected S6_KEEP_ENV warning in output when S6_KEEP_ENV=true"
+        err "Output was: ${output}"
+        return 1
+    fi
+}
+
+test_s6_keep_env_no_warning() {
+    S6_RUNTIME_DIR="$(mktemp -d)"
+    export S6_RUNTIME_DIR
+
+    local output
+    output=$(S6_KEEP_ENV=0 ./src/init-docker-secrets-run.sh 2>&1)
+
+    if [[ "${output}" == *"S6_KEEP_ENV is set to 1"* ]]; then
+        err "Did not expect S6_KEEP_ENV warning when S6_KEEP_ENV=0"
+        err "Output was: ${output}"
+        return 1
+    fi
+
+    output=$(./src/init-docker-secrets-run.sh 2>&1)
+
+    if [[ "${output}" == *"S6_KEEP_ENV is set to 1"* ]]; then
+        err "Did not expect S6_KEEP_ENV warning when S6_KEEP_ENV is unset"
+        err "Output was: ${output}"
+        return 1
+    fi
+}
+
 reset_dirs() {
     if [[ -n "${S6_RUNTIME_DIR:-}" ]] && [[ -d "${S6_RUNTIME_DIR}" ]]; then
         rm -rf "${S6_RUNTIME_DIR}"
     fi
     unset S6_RUNTIME_DIR
+    unset S6_KEEP_ENV
 
     rm -rf "${SECRETS_PATH}" "${SECRETS_EXPORT_PATH}"
     SECRETS_PATH="$(mktemp -d)"
@@ -263,6 +308,8 @@ main() {
     run_test test_load_env_invalid_identifiers 1
     run_test test_s6_export_path_mismatch_warning 1
     run_test test_s6_export_path_default_no_warning 1
+    run_test test_s6_keep_env_warning 1
+    run_test test_s6_keep_env_no_warning 1
 
     if [[ "${failed_tests}" -gt 0 ]]; then
         printf '\n'

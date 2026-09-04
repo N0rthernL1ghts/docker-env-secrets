@@ -32,6 +32,10 @@ main() {
             warn "Supervised services running under with-contenv will NOT inherit them!"
             warn "======================================================================="
         fi
+
+        if [[ "${S6_KEEP_ENV:-0}" == "1" ]] || [[ "${S6_KEEP_ENV:-}" == "true" ]]; then
+            warn "S6_KEEP_ENV is set to 1. with-contenv may ignore secrets in container_environment. Set S6_KEEP_ENV=0 or use load-env/s6-envdir."
+        fi
     fi
 
     if [[ ! -d "${secrets_path}" ]]; then
