@@ -11,7 +11,6 @@ on:
       - .github/workflows/image.yml  # This workflow file itself
       - .dockerignore
       - Dockerfile
-      - build/docker-bake.hcl
       - rootfs/**
       - src/**
       - tests/**
@@ -28,8 +27,11 @@ jobs:
         name: checkout code
         uses: actions/checkout@v6
 
-      - name: Run tests
+      - name: Run unit tests
         run: tests/run-tests.sh
+
+      - name: Run integration tests
+        run: tests/run-integration-tests.sh
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
