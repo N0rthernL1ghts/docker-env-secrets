@@ -94,16 +94,25 @@ test_scenario_no_secrets() {
     info "Running Scenario 3: Zero Secrets Mounted..."
     local compose_file="${SCRIPT_DIR}/integration/no-secrets/compose.yaml"
 
-    local output
-    if ! output=$(docker compose -f "${compose_file}" up --abort-on-container-exit 2>&1); then
-        err "No-secrets container execution failed:"
-        err "${output}"
+    local output_s6
+    if ! output_s6=$(docker compose -f "${compose_file}" up --abort-on-container-exit --exit-code-from s6-test s6-test 2>&1); then
+        err "No-secrets S6 container execution failed:"
+        err "${output_s6}"
+        docker compose -f "${compose_file}" down -v >/dev/null 2>&1 || true
+        return 1
+    fi
+
+    local output_generic
+    if ! output_generic=$(docker compose -f "${compose_file}" up --abort-on-container-exit --exit-code-from generic-test generic-test 2>&1); then
+        err "No-secrets Generic container execution failed:"
+        err "${output_generic}"
         docker compose -f "${compose_file}" down -v >/dev/null 2>&1 || true
         return 1
     fi
 
     docker compose -f "${compose_file}" down -v >/dev/null 2>&1 || true
 
+    local output="${output_s6}"$'\n'"${output_generic}"
     if [[ "${output}" != *"NO_SECRETS_S6_OK"* ]] || [[ "${output}" != *"NO_SECRETS_GENERIC_OK"* ]]; then
         err "No-secrets test failed: Expected output missing."
         err "Output was:"
