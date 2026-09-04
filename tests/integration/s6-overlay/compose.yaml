@@ -1,11 +1,20 @@
-secrets:
-  s6_test_secret:
-    file: ./secrets/s6_test_secret
-
 services:
   test:
     image: docker-env-secrets-s6:integration-test
     environment:
-      S6_KEEP_ENV: 0
+      - S6_KEEP_ENV=0
     secrets:
       - s6_test_secret
+      - complex_secret
+      - collision_secret
+      - COLLISION_SECRET
+
+secrets:
+  s6_test_secret:
+    file: ./secrets/s6_test_secret
+  complex_secret:
+    file: ./secrets/complex_secret
+  collision_secret:
+    file: ./secrets/collision_secret
+  COLLISION_SECRET:
+    file: ./secrets/COLLISION_SECRET

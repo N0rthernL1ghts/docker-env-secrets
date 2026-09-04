@@ -1,14 +1,41 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export SECRETS_EXPORT_PATH=/tmp/exported_secrets
 /usr/local/bin/init-docker-secrets
+
+if [[ ! -d "${SECRETS_EXPORT_PATH}" ]]; then
+    printf 'Custom export directory %s was not created\n' "${SECRETS_EXPORT_PATH}" >&2
+    exit 1
+fi
+
 # shellcheck source=/dev/null
 source /usr/local/lib/load-env "${SECRETS_EXPORT_PATH}"
 
-if [[ "${GENERIC_SECRET:-}" == "generic_secret_value_456" ]]; then
-    printf 'MATCH\n'
-else
-    printf 'MISMATCH\n' >&2
+if [[ "${generic_secret:-}" != "generic_secret_value_456" ]]; then
+    printf 'Mismatch in generic_secret\n' >&2
     exit 1
 fi
+
+if [[ -n "${GENERIC_SECRET:-}" ]]; then
+    printf 'GENERIC_SECRET should not be set when NORMALIZE_SECRET_NAMES=0\n' >&2
+    exit 1
+fi
+
+if [[ "${lower_case_secret:-}" != "lower_case_value_789" ]]; then
+    printf 'Mismatch in lower_case_secret\n' >&2
+    exit 1
+fi
+
+read -r -d '' EXPECTED_COMPLEX <<'EOF' || true
+-----BEGIN TEST KEY-----
+MIIEowIBAAKCAQEA0+special=chars&"quotes" and spaces!
+line 2 of secret
+-----END TEST KEY-----
+EOF
+
+if [[ "${complex_secret:-}" != "${EXPECTED_COMPLEX}" ]]; then
+    printf 'Mismatch in complex_secret\n' >&2
+    exit 1
+fi
+
+printf 'MATCH\n'

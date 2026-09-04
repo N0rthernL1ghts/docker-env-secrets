@@ -1,9 +1,18 @@
-secrets:
-  generic_secret:
-    file: ./secrets/generic_secret
-
 services:
   test:
     image: docker-env-secrets-generic:integration-test
+    environment:
+      NORMALIZE_SECRET_NAMES: "0"
+      SECRETS_EXPORT_PATH: "/tmp/custom_secrets_export"
     secrets:
       - generic_secret
+      - complex_secret
+      - lower_case_secret
+
+secrets:
+  generic_secret:
+    file: ./secrets/generic_secret
+  complex_secret:
+    file: ./secrets/complex_secret
+  lower_case_secret:
+    file: ./secrets/lower_case_secret

@@ -18,6 +18,7 @@ cleanup() {
     info "Cleaning up integration test resources..."
     docker compose -f "${SCRIPT_DIR}/integration/s6-overlay/compose.yaml" down -v --rmi local >/dev/null 2>&1 || true
     docker compose -f "${SCRIPT_DIR}/integration/generic/compose.yaml" down -v --rmi local >/dev/null 2>&1 || true
+    docker compose -f "${SCRIPT_DIR}/integration/no-secrets/compose.yaml" down -v >/dev/null 2>&1 || true
     docker rmi -f "${BASE_IMAGE}" >/dev/null 2>&1 || true
 }
 
@@ -89,6 +90,30 @@ test_scenario_generic() {
     info "Scenario 2 (Generic) passed."
 }
 
+test_scenario_no_secrets() {
+    info "Running Scenario 3: Zero Secrets Mounted..."
+    local compose_file="${SCRIPT_DIR}/integration/no-secrets/compose.yaml"
+
+    local output
+    if ! output=$(docker compose -f "${compose_file}" up --abort-on-container-exit 2>&1); then
+        err "No-secrets container execution failed:"
+        err "${output}"
+        docker compose -f "${compose_file}" down -v >/dev/null 2>&1 || true
+        return 1
+    fi
+
+    docker compose -f "${compose_file}" down -v >/dev/null 2>&1 || true
+
+    if [[ "${output}" != *"NO_SECRETS_S6_OK"* ]] || [[ "${output}" != *"NO_SECRETS_GENERIC_OK"* ]]; then
+        err "No-secrets test failed: Expected output missing."
+        err "Output was:"
+        err "${output}"
+        return 1
+    fi
+
+    info "Scenario 3 (Zero Secrets) passed."
+}
+
 main() {
     trap cleanup EXIT
 
@@ -111,6 +136,13 @@ main() {
         ((failed_tests++))
     else
         info "- Integration Test OK: Scenario Generic (Without S6 Overlay)"
+    fi
+
+    if ! test_scenario_no_secrets; then
+        err "- Integration Test FAIL: Scenario Zero Secrets"
+        ((failed_tests++))
+    else
+        info "- Integration Test OK: Scenario Zero Secrets"
     fi
 
     if [[ "${failed_tests}" -gt 0 ]]; then

@@ -1,0 +1,16 @@
+services:
+  s6-test:
+    image: docker-env-secrets-s6:integration-test
+    environment:
+      - S6_KEEP_ENV=0
+    command: ["/command/with-contenv", "bash", "-c", "echo 'NO_SECRETS_S6_OK'"]
+
+  generic-test:
+    image: docker-env-secrets-generic:integration-test
+    command:
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        /usr/local/bin/init-docker-secrets
+        echo 'NO_SECRETS_GENERIC_OK'
