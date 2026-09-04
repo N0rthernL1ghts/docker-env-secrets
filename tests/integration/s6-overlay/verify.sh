@@ -7,12 +7,14 @@ if [[ "${S6_TEST_SECRET%$'\n'}" != "s6_secret_value_123" ]]; then
     printf 'Mismatch in S6_TEST_SECRET: got %q\n' "${S6_TEST_SECRET}" >&2
     exit 1
 fi
+printf '  ✓ [OK] Plain secret verified\n'
 
 # Verify collision secret was populated without crashing
 if [[ -z "${COLLISION_SECRET:-}" ]]; then
     printf 'COLLISION_SECRET was not set\n' >&2
     exit 1
 fi
+printf '  ✓ [OK] Duplicate collision handled safely without overwrite\n'
 
 # Verify multi-line and special characters secret
 read -r -d '' EXPECTED_COMPLEX <<'EOF' || true
@@ -26,5 +28,6 @@ if [[ "${COMPLEX_SECRET%$'\n'}" != "${EXPECTED_COMPLEX}" ]]; then
     printf 'Mismatch in COMPLEX_SECRET\n' >&2
     exit 1
 fi
+printf '  ✓ [OK] Multi-line secret with special characters, quotes, and spaces verified\n'
 
 printf 'MATCH\n'

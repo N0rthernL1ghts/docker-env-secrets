@@ -8,6 +8,16 @@ info() {
     printf '%s\n' "$*"
 }
 
+print_subchecks() {
+    local text="${1:-}"
+    local line
+    while IFS= read -r line; do
+        if [[ "${line}" =~ (✓[[:space:]]\[OK\].*) ]]; then
+            info "  ${BASH_REMATCH[1]}"
+        fi
+    done <<<"${text}"
+}
+
 readonly BASE_IMAGE="docker-env-secrets:integration-test"
 readonly S6_TEST_IMAGE="docker-env-secrets-s6:integration-test"
 readonly GENERIC_TEST_IMAGE="docker-env-secrets-generic:integration-test"
@@ -57,6 +67,7 @@ test_scenario_s6_overlay() {
         return 1
     fi
 
+    print_subchecks "${output}"
     info "Scenario 1 (With S6 Overlay) passed."
 }
 
@@ -87,6 +98,7 @@ test_scenario_generic() {
         return 1
     fi
 
+    print_subchecks "${output}"
     info "Scenario 2 (Generic) passed."
 }
 
@@ -120,11 +132,29 @@ test_scenario_no_secrets() {
         return 1
     fi
 
+    print_subchecks "${output}"
     info "Scenario 3 (Zero Secrets) passed."
 }
 
 main() {
     trap cleanup EXIT
+
+    local run_unit_tests=1
+    local arg
+    for arg in "$@"; do
+        if [[ "${arg}" == "--skip-unit" ]]; then
+            run_unit_tests=0
+        fi
+    done
+
+    if [[ "${run_unit_tests}" -eq 1 ]]; then
+        info "Running Unit Tests..."
+        if ! "${SCRIPT_DIR}/run-tests.sh"; then
+            err "Unit tests failed. Aborting integration tests."
+            return 1
+        fi
+        printf '\n'
+    fi
 
     local failed_tests=0
 

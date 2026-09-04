@@ -3,14 +3,32 @@ services:
     image: docker-env-secrets-s6:integration-test
     environment:
       - S6_KEEP_ENV=0
-    command: ["/command/with-contenv", "bash", "-c", "echo 'NO_SECRETS_S6_OK'"]
+    command:
+      - /command/with-contenv
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        if [[ -n "$${S6_TEST_SECRET:-}" ]] || [[ -n "$${COMPLEX_SECRET:-}" ]]; then
+            printf 'Unexpected secret variables found in environment\n' >&2
+            exit 1
+        fi
+        printf '  ✓ [OK] S6 environment is clean with zero secrets mounted\n'
+        printf 'NO_SECRETS_S6_OK\n'
 
   generic-test:
     image: docker-env-secrets-generic:integration-test
+    environment:
+      - SECRETS_EXPORT_PATH=/tmp/no_secrets_export
     command:
       - bash
       - -c
       - |
         set -euo pipefail
         /usr/local/bin/init-docker-secrets
-        echo 'NO_SECRETS_GENERIC_OK'
+        if [[ -d "/tmp/no_secrets_export" ]] && [[ "$$(find /tmp/no_secrets_export -maxdepth 1 -type f | wc -l)" -ne 0 ]]; then
+            printf 'Expected export directory to be empty\n' >&2
+            exit 1
+        fi
+        printf '  ✓ [OK] Generic export directory is clean with zero secrets mounted\n'
+        printf 'NO_SECRETS_GENERIC_OK\n'
