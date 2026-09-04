@@ -22,6 +22,14 @@ The image is packaged as a minimal `scratch` container containing root filesyste
    - In S6 Overlay environments, services running under `with-contenv` automatically inherit the exported variables from `/var/run/s6/container_environment/`.
    - In standard Linux containers, `/usr/local/lib/load-env` validates each secret name as a legal shell identifier (`^[a-zA-Z_][a-zA-Z0-9_]*$`) and exports it into the calling shell.
 
+### Design Rationale: File Copying vs. Symlinking
+
+Secrets are copied to `${SECRETS_EXPORT_PATH}` rather than symlinked for several operational reasons:
+
+- **Mount Decoupling & Resilience**: Copying creates an independent, immutable snapshot in the target directory (typically `tmpfs`). If the source secrets volume is unmounted, cleared, or modified after container initialization, exported environment variables remain intact without producing broken (dangling) symlinks.
+- **Permission & Least-Privilege Isolation**: Mounted secret files (e.g., in Docker Swarm or Kubernetes) often carry restrictive permissions such as `0400 root:root`, or reside in a restricted `0700` directory. Symlinks enforce the target file's access permissions and directory traversal rules. If a container service drops privileges to run as a non-root user, resolving a symlink to a root-only target results in `Permission denied` errors. Copying during root initialization creates standard, readable target files for supervised services.
+- **Container Environment Immutability**: Process environments in Docker containers are fixed at the time processes are spawned. Dynamic secret rotation cannot update the environment of active running processes without a container restart or deliberate application reload mechanism, making symlink-based live file updates unnecessary for static container environments.
+
 ## Configuration
 
 The utility is configured via container environment variables:
